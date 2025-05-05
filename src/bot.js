@@ -1,60 +1,43 @@
 require('dotenv').config();
-const TelegramBot = require('node-telegram-bot-api');
-const mongoose = require('mongoose');
-const Expense = require('./models/Expense');
-const ExcelJS = require('exceljs');
-const { Steps } = require('./enum/steps');
-const { Currencies } = require("./constants/currencies");
-const { Categories } = require("./constants/categories");
-const { Persons } = require("./constants/persons");
+const {Telegraf} = require('telegraf');
 const express = require('express');
+const mongoose = require('mongoose');
+const ExcelJS = require('exceljs');
+const Expense = require('./models/Expense');
+const {Steps} = require('./enum/steps');
+const {Currencies} = require("./constants/currencies");
+const {Categories} = require("./constants/categories");
+const {Persons} = require("./constants/persons");
 
 const port = process.env.PORT || 4000;
 const isLocal = process.env.IS_LOCAL === 'true';
-
+const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
 
-app.get('/', (req, res) => {
-    res.send('works');
-});
+mongoose
+    .connect(process.env.MONGODB_URI)
+    .then(() => console.log('MongoDB connected...'))
+    .catch(err => console.log(err));
 
 app.use(express.json());
 
-let bot;
-
-
-if (isLocal) {
-    bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
-    console.log('Бот запущен в режиме polling (локально)');
-} else {
-    bot = new TelegramBot(process.env.BOT_TOKEN);
-    app.use(express.json());
-
+if (!isLocal) {
     const domain = 'https://my-expense-bot.glitch.me';
-    bot.setWebHook(`${domain}/bot${process.env.BOT_TOKEN}`)
-        .then(() => console.log('Webhook установлен'))
-        .catch(err => console.error('Ошибка webhook:', err));
+    bot.telegram.setWebhook(`${domain}/bot${process.env.BOT_TOKEN}`);
 
     app.post(`/bot${process.env.BOT_TOKEN}`, (req, res) => {
-        bot.processUpdate(req.body);
+        bot.handleUpdate(req.body);
         res.sendStatus(200);
     });
+} else {
+    bot.launch();
+    console.log('Бот запущен в режиме polling (локально)');
 }
 
+app.get('/', (req, res) => res.send('works'));
+app.listen(port, () => console.log(`Сервер слушает на порту ${port}`));
 
-app.post(`/bot${process.env.BOT_TOKEN}`, (req, res) => {
-    bot.processUpdate(req.body);
-    res.sendStatus(200);
-});
-
-
-app.listen(port, () => {
-    console.log(`Сервер слушает на порту ${port}`);
-});
-
-const today = new Date();
-const yesterday = new Date(today);
-yesterday.setDate(today.getDate() - 1);
+const userState = {};
 
 const formatDate = (date) => {
     const day = String(date.getDate()).padStart(2, '0');
@@ -63,44 +46,44 @@ const formatDate = (date) => {
     return `${day}.${month}.${year}`;
 };
 
-mongoose
-    .connect(process.env.MONGODB_URI)
-    .then(() => console.log('MongoDB connected...'))
-    .catch(err => console.log(err));
+function showMainMenu(ctx) {
+    ctx.reply('Выберите действие:', {
+        reply_markup: {
+            keyboard: [
+                ['➕ Добавить трату'],
+                ['📊 Скачать отчет'],
+            ],
+            resize_keyboard: true,
+        },
+    });
+}
 
-const userState = {};
-
-bot.onText(/\/start/, (msg) => {
-    bot.sendMessage(msg.chat.id, 'Привет! 👋');
-    showMainMenu(msg.chat.id);
+bot.start((ctx) => {
+    ctx.reply('Привет! 👋');
+    showMainMenu(ctx);
 });
 
-bot.onText(/➕ Добавить трату/, (msg) => {
-    userState[msg.chat.id] = {};
-    bot.sendMessage(msg.chat.id, 'Введи сумму:');
-    userState[msg.chat.id].step = Steps.Amount;
+bot.hears('➕ Добавить трату', (ctx) => {
+    userState[ctx.chat.id] = {step: Steps.Amount};
+    ctx.reply('Введи сумму:');
 });
 
-bot.onText(/📊 Скачать отчет/, async (msg) => {
-    const chatId = msg.chat.id;
+bot.hears('📊 Скачать отчет', async (ctx) => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const expenses = await Expense.find({date: {$gte: startOfMonth}});
 
-    const expenses = await Expense.find({ date: { $gte: startOfMonth } });
-
-    if (!expenses.length) {
-        return bot.sendMessage(chatId, 'За этот месяц трат не найдено.');
-    }
+    if (!expenses.length) return ctx.reply('За этот месяц трат не найдено.');
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Отчет');
 
     sheet.columns = [
-        { header: 'Сумма', key: 'amount' },
-        { header: 'Валюта', key: 'currency' },
-        { header: 'Категория', key: 'category' },
-        { header: 'Кто', key: 'person' },
-        { header: 'Дата', key: 'date' },
+        {header: 'Сумма', key: 'amount'},
+        {header: 'Валюта', key: 'currency'},
+        {header: 'Категория', key: 'category'},
+        {header: 'Кто', key: 'person'},
+        {header: 'Дата', key: 'date'},
     ];
 
     expenses.forEach(e => {
@@ -114,59 +97,55 @@ bot.onText(/📊 Скачать отчет/, async (msg) => {
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-
-    return bot.sendDocument(chatId, buffer, {}, {
-        filename: 'report.xlsx',
-        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+    await ctx.replyWithDocument({source: buffer, filename: 'report.xlsx'});
 });
 
-bot.onText(/\/add/, (msg) => {
-    userState[msg.chat.id] = {};
-    bot.sendMessage(msg.chat.id, 'Введи сумму:');
-    userState[msg.chat.id].step = 'amount';
-});
-
-bot.on('message', async (msg) => {
-    const chatId = msg.chat.id;
-    const text = msg.text;
+bot.on('text', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const text = ctx.message.text;
     const state = userState[chatId];
+
     if (!state) return;
 
     switch (state.step) {
-        case Steps.Amount:
+        case Steps.Amount: {
             const amount = parseFloat(text);
-            if (isNaN(amount)) return bot.sendMessage(chatId, 'Введите корректную сумму.');
-
+            if (isNaN(amount)) return ctx.reply('Введите корректную сумму.');
             state.amount = amount;
             state.step = Steps.Currency;
-            return bot.sendMessage(chatId, 'Выбери валюту:', {
-                reply_markup: { keyboard: Currencies.map(c => [c]), one_time_keyboard: true },
+            return ctx.reply('Выбери валюту:', {
+                reply_markup: {
+                    keyboard: Currencies.map(c => [c]),
+                    one_time_keyboard: true,
+                },
             });
+        }
 
         case Steps.Currency:
             state.currency = text;
             state.step = Steps.Category;
-            return bot.sendMessage(chatId, 'Выбери категорию:', {
-                reply_markup: { keyboard: Categories.map(c => [c]), one_time_keyboard: true },
+            return ctx.reply('Выбери категорию:', {
+                reply_markup: {
+                    keyboard: Categories.map(c => [c]),
+                    one_time_keyboard: true,
+                },
             });
 
         case Steps.Category:
             state.category = text;
-
             state.step = Steps.Date;
-            return bot.sendMessage(chatId, `Выберите дату:`, {
+            return ctx.reply('Выберите дату:', {
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: 'Сегодня', callback_data: 'today' }],
-                        [{ text: 'Вчера', callback_data: 'yesterday' }],
-                        [{ text: 'Выбрать дату', callback_data: 'choose_date' }],
+                        [{text: 'Сегодня', callback_data: 'today'}],
+                        [{text: 'Вчера', callback_data: 'yesterday'}],
+                        [{text: 'Выбрать дату', callback_data: 'choose_date'}],
                     ],
                 },
             });
 
         case Steps.Date:
-            const inputDate = text.trim();
+            let inputDate = text.trim();
             let parsedDate;
 
             if (inputDate === '' || inputDate.toLowerCase() === 'сегодня') {
@@ -177,113 +156,92 @@ bot.on('message', async (msg) => {
             }
 
             if (isNaN(parsedDate)) {
-                return bot.sendMessage(chatId, 'Введите дату в формате ДД.ММ.ГГГГ или оставьте пустым для сегодняшней:');
+                return ctx.reply('Введите дату в формате ДД.ММ.ГГГГ или оставьте пустым для сегодняшней:');
             }
 
             state.date = parsedDate;
             state.step = Steps.Person;
-
-            return bot.sendMessage(chatId, 'Кто потратил?', {
-                reply_markup: { keyboard: Persons.map(p => [p]), one_time_keyboard: true },
+            return ctx.reply('Кто потратил?', {
+                reply_markup: {
+                    keyboard: Persons.map(p => [p]),
+                    one_time_keyboard: true,
+                },
             });
 
         case Steps.Person:
             state.person = text;
 
-            const confirmationMessage = `
-                Подтвердите вашу трату:
-                Сумма: ${state.amount} ${state.currency}
-                Категория: ${state.category}
-                Кто: ${state.person}
-                Дата: ${formatDate(state.date)}
-            `;
+            const message = `
+Подтвердите вашу трату:
+Сумма: ${state.amount} ${state.currency}
+Категория: ${state.category}
+Кто: ${state.person}
+Дата: ${formatDate(state.date)}
+      `;
 
             state.step = Steps.Confirmation;
-            return bot.sendMessage(chatId, confirmationMessage, {
+            return ctx.reply(message, {
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: 'Подтвердить', callback_data: 'confirm' }],
-                        [{ text: 'Отмена', callback_data: 'cancel' }],
+                        [{text: 'Подтвердить', callback_data: 'confirm'}],
+                        [{text: 'Отмена', callback_data: 'cancel'}],
                     ],
                 },
             });
     }
 });
 
-bot.on('callback_query', async (query) => {
-    const chatId = query.message.chat.id;
-    const action = query.data;
+bot.on('callback_query', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const action = ctx.callbackQuery.data;
 
-    console.log(action);
-    console.log(userState);
-    console.log(userState[chatId]);
+    if (!userState[chatId]) return;
 
-    if(!userState[chatId]) {
-        return
-    }
-
+    const state = userState[chatId];
 
     if (action === 'confirm') {
-        const state = userState[chatId];
-        console.log(state);
         await Expense.create({
             amount: state.amount,
-            category: state.category,
             currency: state.currency,
+            category: state.category,
             person: state.person,
             date: state.date || new Date(),
         });
 
         delete userState[chatId];
-
-        // Очистка сообщений и подтверждение
-        bot.sendMessage(chatId, '✅ Трата успешно сохранена!');
-        showMainMenu(chatId);
+        await ctx.reply('✅ Трата успешно сохранена!!!');
+        showMainMenu(ctx);
     }
 
     if (action === 'cancel') {
         delete userState[chatId];
-
-        // Очистка сообщений и отмена
-        bot.sendMessage(chatId, '❌ Вы отменили запись.');
-        showMainMenu(chatId);
+        await ctx.reply('❌ Вы отменили запись.');
+        showMainMenu(ctx);
     }
 
     if (action === 'today') {
-        const todayDate = new Date();
-        userState[chatId].date = todayDate;
-        bot.sendMessage(chatId, `Дата установлена на: ${formatDate(todayDate)}`);
-        userState[chatId].step = Steps.Person;
-        return bot.sendMessage(chatId, 'Кто потратил?', {
-            reply_markup: { keyboard: Persons.map(p => [p]), one_time_keyboard: true },
+        const date = new Date();
+        state.date = date;
+        state.step = Steps.Person;
+        await ctx.reply(`Дата установлена на: ${formatDate(date)}`);
+        return ctx.reply('Кто потратил?', {
+            reply_markup: {keyboard: Persons.map(p => [p]), one_time_keyboard: true},
         });
     }
 
     if (action === 'yesterday') {
-        const yesterdayDate = new Date();
-        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-        userState[chatId].date = yesterdayDate;
-        bot.sendMessage(chatId, `Дата установлена на: ${formatDate(yesterdayDate)}`);
-        userState[chatId].step = Steps.Person;
-        return bot.sendMessage(chatId, 'Кто потратил?', {
-            reply_markup: { keyboard: Persons.map(p => [p]), one_time_keyboard: true },
+        const date = new Date();
+        date.setDate(date.getDate() - 1);
+        state.date = date;
+        state.step = Steps.Person;
+        await ctx.reply(`Дата установлена на: ${formatDate(date)}`);
+        return ctx.reply('Кто потратил?', {
+            reply_markup: {keyboard: Persons.map(p => [p]), one_time_keyboard: true},
         });
     }
 
     if (action === 'choose_date') {
-        userState[chatId].step = Steps.Date;
-        return bot.sendMessage(chatId, 'Введите дату в формате ДД.ММ.ГГГГ или отправьте "сегодня":');
+        state.step = Steps.Date;
+        return ctx.reply('Введите дату в формате ДД.ММ.ГГГГ или отправьте "сегодня":');
     }
 });
-
-function showMainMenu(chatId) {
-    bot.sendMessage(chatId, 'Выберите действие:', {
-        reply_markup: {
-            keyboard: [
-                ['➕ Добавить трату'],
-                ['📊 Скачать отчет'],
-            ],
-            resize_keyboard: true,
-        },
-    });
-}
