@@ -8,8 +8,35 @@ const { Currencies } = require("./constants/currencies");
 const { Categories } = require("./constants/categories");
 const { Persons } = require("./constants/persons");
 const { InlineKeyboardButton, InlineKeyboardMarkup } = require('node-telegram-bot-api');
+const express = require('express');
+
+const port = process.env.PORT || 4000;
+
+const app = express();
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
+
+
+app.get('/', (req, res) => {
+    res.send('Привет, приложение работает!');
+});
+
+
+const domain = 'https://my-expenses-bot-vsp1.onrender.com';
+
+
+bot.setWebHook(`${domain}/bot${process.env.BOT_TOKEN}`);
+
+
+app.post(`/bot${process.env.BOT_TOKEN}`, (req, res) => {
+    bot.processUpdate(req.body);
+    res.sendStatus(200);
+});
+
+
+app.listen(port, () => {
+    console.log(`Сервер слушает на порту ${port}`);
+});
 
 const today = new Date();
 const yesterday = new Date(today);
