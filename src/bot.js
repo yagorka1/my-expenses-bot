@@ -18,7 +18,7 @@ const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
 
 app.get('/', (req, res) => {
-    res.send('Привет, приложение работает!');
+    res.send('works');
 });
 
 
