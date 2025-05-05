@@ -4,13 +4,12 @@ const mongoose = require('mongoose');
 const Expense = require('./models/Expense');
 const ExcelJS = require('exceljs');
 const { Steps } = require('./enum/steps');
-const { BOT_TOKEN, MONGODB_URI } = require("./constants/general-data");
 const { Currencies } = require("./constants/currencies");
 const { Categories } = require("./constants/categories");
 const { Persons } = require("./constants/persons");
 const { InlineKeyboardButton, InlineKeyboardMarkup } = require('node-telegram-bot-api');
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
 const today = new Date();
 const yesterday = new Date(today);
@@ -24,7 +23,7 @@ const formatDate = (date) => {
 };
 
 mongoose
-    .connect(MONGODB_URI)
+    .connect(process.env.MONGODB_URI)
     .then(() => console.log('MongoDB connected...'))
     .catch(err => console.log(err));
 
