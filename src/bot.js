@@ -7,25 +7,39 @@ const { Steps } = require('./enum/steps');
 const { Currencies } = require("./constants/currencies");
 const { Categories } = require("./constants/categories");
 const { Persons } = require("./constants/persons");
-const { InlineKeyboardButton, InlineKeyboardMarkup } = require('node-telegram-bot-api');
 const express = require('express');
 
 const port = process.env.PORT || 4000;
+const isLocal = process.env.IS_LOCAL === 'true';
 
 const app = express();
-
-const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
-
 
 app.get('/', (req, res) => {
     res.send('works');
 });
 
+app.use(express.json());
 
-const domain = 'https://my-expenses-bot-vsp1.onrender.com';
+let bot;
 
 
-bot.setWebHook(`${domain}/bot${process.env.BOT_TOKEN}`);
+if (isLocal) {
+    bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
+    console.log('Бот запущен в режиме polling (локально)');
+} else {
+    bot = new TelegramBot(process.env.BOT_TOKEN);
+    app.use(express.json());
+
+    const domain = 'https://my-expense-bot.glitch.me';
+    bot.setWebHook(`${domain}/bot${process.env.BOT_TOKEN}`)
+        .then(() => console.log('Webhook установлен'))
+        .catch(err => console.error('Ошибка webhook:', err));
+
+    app.post(`/bot${process.env.BOT_TOKEN}`, (req, res) => {
+        bot.processUpdate(req.body);
+        res.sendStatus(200);
+    });
+}
 
 
 app.post(`/bot${process.env.BOT_TOKEN}`, (req, res) => {
