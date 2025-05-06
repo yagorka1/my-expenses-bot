@@ -22,7 +22,7 @@ mongoose
 app.use(express.json());
 
 if (!isLocal) {
-    const domain = 'https://my-expense-bot.glitch.me';
+    const domain = 'https://my-expenses-bot-production.up.railway.app';
     bot.telegram.setWebhook(`${domain}/bot${process.env.BOT_TOKEN}`);
 
     app.post(`/bot${process.env.BOT_TOKEN}`, (req, res) => {
@@ -36,6 +36,13 @@ if (!isLocal) {
 
 app.get('/', (req, res) => res.send('works'));
 app.listen(port, () => console.log(`Сервер слушает на порту ${port}`));
+
+
+app.post(`/bot${process.env.BOT_TOKEN}`, (req, res) => {
+    console.log('Update received:', req.body); // добавь эту строку
+    bot.handleUpdate(req.body);
+    res.sendStatus(200);
+});
 
 const userState = {};
 
