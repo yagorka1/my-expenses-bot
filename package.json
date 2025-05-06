@@ -19,6 +19,11 @@
     "telegraf": "^4.16.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "@types/dotenv": "^8.2.3",
+    "@types/express": "^5.0.1",
+    "@types/mongoose": "^5.11.97",
+    "@types/node": "^22.15.14",
+    "nodemon": "^3.1.10",
+    "typescript": "^5.8.3"
   }
 }

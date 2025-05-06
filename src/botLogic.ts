@@ -30,7 +30,7 @@ function showMainMenu(ctx: any) {
     });
 }
 
-function createBotLogic(bot: Telegraf) {
+export function createBotLogic(bot: Telegraf) {
     bot.start((ctx: any) => {
         ctx.reply('Привет! 👋');
         showMainMenu(ctx);
@@ -230,5 +230,3 @@ function createBotLogic(bot: Telegraf) {
         }
     });
 }
-
-module.exports = { createBotLogic };
