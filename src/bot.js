@@ -34,6 +34,8 @@ const domain = process.env.DOMAIN || 'https://my-expenses-bot-production.up.rail
             console.log(`🚀 Port ${port}`);
         });
 
+        setInterval(() => {}, 1000 * 60 * 5);
+
         process.once('SIGINT', () => bot.stop('SIGINT'));
         process.once('SIGTERM', () => bot.stop('SIGTERM'));
     } catch (err) {
