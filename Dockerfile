@@ -11,4 +11,4 @@ COPY . .
 RUN npx tsc
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["node", "dist/bot.js"]
