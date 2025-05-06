@@ -2,11 +2,11 @@
   "name": "my-expenses-bot",
   "version": "1.0.1",
   "description": "",
-  "main": "src/bot.js",
+  "main": "src/bot.ts",
   "scripts": {
-    "start": "node src/bot.js",
-    "dev": "nodemon src/bot.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node dist/bot.ts",
+    "dev": "ts-node src/bot.ts",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",

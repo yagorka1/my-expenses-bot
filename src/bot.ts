@@ -1,12 +1,16 @@
-require('dotenv').config();
+import mongoose from 'mongoose';
+import { Telegraf } from 'telegraf';
+import dotenv from 'dotenv';
+import express, { Request, Response } from 'express';
 
-const express = require('express');
-const { Telegraf } = require('telegraf');
-const mongoose = require('mongoose');
+dotenv.config();
 const app = express();
-const { createBotLogic } = require('./botLogic');
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+if (!process.env.BOT_TOKEN) {
+    throw new Error('BOT_TOKEN is not defined in environment variables');
+}
+
+const bot: Telegraf = new Telegraf(process.env.BOT_TOKEN);
 
 const port = process.env.PORT || 4000;
 const isLocal = process.env.IS_LOCAL === 'true';
@@ -14,10 +18,14 @@ const domain = process.env.DOMAIN || 'https://my-expenses-bot-production.up.rail
 
 (async () => {
     try {
+        if (!process.env.MONGODB_URI) {
+            throw new Error('MONGODB_URI is not defined in environment variables');
+        }
+
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('✅ MongoDB connected');
 
-        require('./botLogic.js').createBotLogic(bot);
+        require('./botLogic').createBotLogic(bot);
 
         if (isLocal) {
             await bot.launch();
@@ -29,7 +37,8 @@ const domain = process.env.DOMAIN || 'https://my-expenses-bot-production.up.rail
             console.log(`🌐 Webhook set to: ${domain}/bot${process.env.BOT_TOKEN}`);
         }
 
-        app.get('/', (req, res) => res.send('Bot is up and running'));
+        // @ts-ignore
+        app.get('/', (req: Request, res: Response) => res.send('Bot is up and running'));
 
         app.listen(port, () => {
             console.log(`🚀 Server listening on port ${port}`);

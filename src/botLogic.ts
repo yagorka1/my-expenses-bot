@@ -1,17 +1,27 @@
-const { Steps } = require('./enum/steps');
-const { Currencies } = require('./constants/currencies');
-const { Categories } = require('./constants/categories');
-const { Persons } = require('./constants/persons');
-const Expense = require('./models/Expense');
-const ExcelJS = require('exceljs');
+import { Telegraf } from 'telegraf';
+import ExcelJS from 'exceljs';
+import Expense from './models/Expense';
+import { Steps } from './enum/steps';
+import { Currencies } from './constants/currencies';
+import { Categories } from './constants/categories';
+import { Persons } from './constants/persons';
 
-const userState = {};
+interface UserState {
+    step: Steps;
+    amount?: number;
+    currency?: string;
+    category?: string;
+    date?: Date;
+    person?: string;
+}
 
-function formatDate(date) {
+const userState: Record<number, UserState> = {};
+
+function formatDate(date: any) {
     return date.toLocaleDateString('ru-RU');
 }
 
-function showMainMenu(ctx) {
+function showMainMenu(ctx: any) {
     ctx.reply('Выберите действие:', {
         reply_markup: {
             keyboard: [['➕ Добавить трату'], ['📊 Скачать отчет']],
@@ -20,18 +30,18 @@ function showMainMenu(ctx) {
     });
 }
 
-function createBotLogic(bot) {
-    bot.start((ctx) => {
+function createBotLogic(bot: Telegraf) {
+    bot.start((ctx: any) => {
         ctx.reply('Привет! 👋');
         showMainMenu(ctx);
     });
 
-    bot.hears('➕ Добавить трату', (ctx) => {
+    bot.hears('➕ Добавить трату', (ctx: any) => {
         userState[ctx.chat.id] = { step: Steps.Amount };
         ctx.reply('Введи сумму:');
     });
 
-    bot.hears('📊 Скачать отчет', async (ctx) => {
+    bot.hears('📊 Скачать отчет', async (ctx: any) => {
         try {
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -126,6 +136,7 @@ function createBotLogic(bot) {
                     parsedDate = new Date(`${year}-${month}-${day}`);
                 }
 
+                // @ts-ignore
                 if (isNaN(parsedDate)) {
                     return ctx.reply('Введите дату в формате ДД.ММ.ГГГГ или оставьте пустым для сегодняшней:');
                 }
@@ -163,7 +174,9 @@ function createBotLogic(bot) {
     });
 
     bot.on('callback_query', async (ctx) => {
+        // @ts-ignore
         const chatId = ctx.chat.id;
+        // @ts-ignore
         const action = ctx.callbackQuery.data;
 
         if (!userState[chatId]) return;
