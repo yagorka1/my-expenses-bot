@@ -5,7 +5,7 @@
   "main": "src/bot.ts",
   "scripts": {
     "start": "node dist/bot.ts",
-    "dev": "ts-node src/bot.ts",
+    "dev": "nodemon",
     "build": "tsc"
   },
   "keywords": [],
@@ -24,6 +24,7 @@
     "@types/mongoose": "^5.11.97",
     "@types/node": "^22.15.14",
     "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
 }
