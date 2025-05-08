@@ -1,10 +1,11 @@
 import mongoose from 'mongoose';
 import { Telegraf } from 'telegraf';
 import dotenv from 'dotenv';
-import express, { Request, Response } from 'express';
+import express, { Express, Request, Response } from 'express';
+import { createAccessControlMiddleware } from './scripts/accessControl';
 
 dotenv.config();
-const app = express();
+const app: Express = express();
 
 if (!process.env.BOT_TOKEN) {
     throw new Error('BOT_TOKEN is not defined in environment variables');
@@ -14,7 +15,8 @@ const bot: Telegraf = new Telegraf(process.env.BOT_TOKEN);
 
 const port = process.env.PORT || 4000;
 const isLocal = process.env.IS_LOCAL === 'true';
-const domain = process.env.DOMAIN || 'https://my-expenses-bot-production.up.railway.app';
+const domain = process.env.DOMAIN;
+bot.use(createAccessControlMiddleware());
 
 (async () => {
     try {
@@ -25,7 +27,7 @@ const domain = process.env.DOMAIN || 'https://my-expenses-bot-production.up.rail
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('✅ MongoDB connected');
 
-        require('./botLogic').createBotLogic(bot);
+        require('./scripts/botLogic').createBotLogic(bot);
 
         if (isLocal) {
             await bot.launch();

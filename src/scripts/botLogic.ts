@@ -1,12 +1,12 @@
 import { Telegraf } from 'telegraf';
 import ExcelJS from 'exceljs';
-import Expense from './models/Expense';
-import { Steps } from './enum/steps';
-import { Currencies } from './constants/currencies';
-import { Categories } from './constants/categories';
-import { Persons } from './constants/persons';
-import { ExpenseInterface } from './interfaces/expense.interface';
-import { Actions } from './enum/actions';
+import { Steps } from '../enum/steps';
+import Expense from '../models/Expense';
+import { Actions } from '../enum/actions';
+import { Categories } from '../constants/categories';
+import { Persons } from '../constants/persons';
+import { Currencies } from '../constants/currencies';
+import { ExpenseInterface } from '../interfaces/expense.interface';
 
 const expenseState: Record<number, ExpenseInterface> = {};
 
@@ -122,7 +122,7 @@ export function createBotLogic(bot: Telegraf) {
         state.step = Steps.Category;
         return ctx.reply('Выбери категорию:', {
           reply_markup: {
-            keyboard: Categories.map(c => [c]),
+            keyboard: Categories.map((c: string) => [c]),
             one_time_keyboard: true,
           },
         });
