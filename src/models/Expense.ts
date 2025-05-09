@@ -1,9 +1,12 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, Types } from 'mongoose';
 
 interface IExpense extends Document {
     amount: number;
     currency: string;
-    category: string;
+    categoryName: string;
+    categoryId: Types.ObjectId;
+    subcategoryId: Types.ObjectId;
+    subcategoryName: string;
     person: string;
     date: Date;
 }
@@ -11,7 +14,18 @@ interface IExpense extends Document {
 const expenseSchema = new Schema<IExpense>({
     amount: Number,
     currency: String,
-    category: String,
+    categoryName: String,
+    categoryId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Category',
+        required: true,
+    },
+    subcategoryId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Subcategory',
+        required: true,
+    },
+    subcategoryName: String,
     person: String,
     date: Date,
 });
