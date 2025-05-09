@@ -3,10 +3,11 @@ import ExcelJS from 'exceljs';
 import { Steps } from '../enum/steps';
 import Expense from '../models/Expense';
 import { Actions } from '../enum/actions';
-import { Categories } from '../constants/categories';
 import { Persons } from '../constants/persons';
 import { Currencies } from '../constants/currencies';
 import { ExpenseInterface } from '../interfaces/expense.interface';
+import Category from '../models/Category';
+import Subcategory from '../models/Subcategory';
 
 const expenseState: Record<number, ExpenseInterface> = {};
 
@@ -74,7 +75,7 @@ export function createBotLogic(bot: Telegraf) {
         sheet.addRow({
           amount: e.amount,
           currency: e.currency,
-          category: e.category,
+          categoryName: e.categoryName,
           person: e.person,
           date: e.date.toISOString().split('T')[0],
         })
@@ -120,15 +121,78 @@ export function createBotLogic(bot: Telegraf) {
       case Steps.Currency:
         state.currency = text;
         state.step = Steps.Category;
-        return ctx.reply('Выбери категорию:', {
-          reply_markup: {
-            keyboard: Categories.map((c: string) => [c]),
-            one_time_keyboard: true,
-          },
-        });
+
+        try {
+          const categories = await Category.find().exec();
+          // @ts-ignore
+          state.categories = categories;
+
+          if (categories.length === 0) {
+            return ctx.reply('Нет доступных категорий.');
+          }
+
+          const keyboard = categories.map((category) => [category.name]);
+
+          return ctx.reply('Выбери категорию:', {
+            reply_markup: {
+              keyboard: keyboard,
+              one_time_keyboard: true,
+            },
+          });
+        } catch (error) {
+          console.error(error);
+          return ctx.reply('Ошибка при получении категорий.');
+        }
 
       case Steps.Category:
-        state.category = text;
+        state.categoryName = text;
+
+        // @ts-ignore
+        const category = state.categories?.find((c) => c.name === state.categoryName);
+
+        if (!category) {
+          return ctx.reply('Категория не найдена. Попробуйте еще раз.');
+        }
+
+        state.category = category;
+
+        state.step = Steps.Subcategory;
+
+        try {
+          // @ts-ignore
+          const subcategories = await Subcategory.find({ categoryId: state.category._id }).exec();
+          // @ts-ignore
+          state.subcategories = subcategories;
+
+          if (subcategories.length === 0) {
+            return ctx.reply('Нет доступных подкатегорий.');
+          }
+
+          const keyboard = subcategories.map((subcategory) => [subcategory.name]);
+
+          return ctx.reply('Выбери подкатегорию:', {
+            reply_markup: {
+              keyboard: keyboard,
+              one_time_keyboard: true,
+            },
+          });
+        } catch (error) {
+          console.error(error);
+          return ctx.reply('Ошибка при получении подкатегорий.');
+        }
+
+      case Steps.Subcategory:
+        state.subcategoryName = text;
+
+        // @ts-ignore
+        const subcategory = state.subcategories?.find((c) => c.name === state.subcategoryName);
+
+        if (!subcategory) {
+          return ctx.reply('Подкатегория не найдена. Попробуйте еще раз.');
+        }
+
+        state.subcategory = subcategory;
+
         state.step = Steps.Date;
         return ctx.reply('Выберите дату:', {
           reply_markup: {
@@ -183,7 +247,8 @@ export function createBotLogic(bot: Telegraf) {
             const message = `
                 Подтвердите вашу трату:
                 Сумма: ${state.amount} ${state.currency}
-                Категория: ${state.category}
+                Категория: ${state.categoryName}
+                Подкатегория: ${state.subcategoryName}
                 Кто: ${state.person}
                 Дата: ${formatDate(state.date)}
                 Описание: ${state.description}`;
@@ -214,7 +279,10 @@ export function createBotLogic(bot: Telegraf) {
       await Expense.create({
         amount: state.amount,
         currency: state.currency,
-        category: state.category,
+        categoryName: state.categoryName,
+        categoryId: state?.category?._id || null,
+        subcategoryName: state.subcategoryName,
+        subcategoryId: state?.subcategory?._id || null,
         person: state.person,
         date: state.date || new Date(),
       });
