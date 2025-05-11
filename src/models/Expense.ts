@@ -9,6 +9,7 @@ interface IExpense extends Document {
     subcategoryName: string;
     person: string;
     date: Date;
+    description: string;
 }
 
 const expenseSchema = new Schema<IExpense>({
@@ -28,6 +29,7 @@ const expenseSchema = new Schema<IExpense>({
     subcategoryName: String,
     person: String,
     date: Date,
+    description: String,
 });
 
 export default model<IExpense>('Expense', expenseSchema);
