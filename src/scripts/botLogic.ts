@@ -286,6 +286,7 @@ export function createBotLogic(bot: Telegraf) {
         subcategoryId: state?.subcategory?._id || null,
         person: state.person,
         date: state.date || new Date(),
+        description: state.description || null,
       });
 
       delete expenseState[chatId];
