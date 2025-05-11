@@ -124,7 +124,6 @@ export function createBotLogic(bot: Telegraf) {
 
         try {
           const categories = await Category.find().exec();
-          console.log('c: ' + categories);
           // @ts-ignore
           state.categories = categories;
 
