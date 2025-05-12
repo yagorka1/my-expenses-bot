@@ -8,6 +8,7 @@ import { Currencies } from '../constants/currencies';
 import { ExpenseInterface } from '../interfaces/expense.interface';
 import Category from '../models/Category';
 import Subcategory from '../models/Subcategory';
+import axios from 'axios';
 
 const expenseState: Record<number, ExpenseInterface> = {};
 
@@ -276,7 +277,9 @@ export function createBotLogic(bot: Telegraf) {
     const state = expenseState[chatId];
 
     if (action === Actions.Confirm) {
-      await Expense.create({
+      const apiUrl: string | undefined = process.env.IS_LOCAL ? 'http://localhost:3000' : process.env.API_URL;
+
+      await axios.post(`${apiUrl}/expenses/create`, {
         amount: state.amount,
         currency: state.currency,
         categoryName: state.categoryName,
@@ -286,6 +289,10 @@ export function createBotLogic(bot: Telegraf) {
         person: state.person,
         date: state.date || new Date(),
         description: state.description || null,
+      }, {
+        headers: {
+          Authorization: `Bearer ${process.env.BOT_TOKEN}`,
+        },
       });
 
       delete expenseState[chatId];
