@@ -17,6 +17,7 @@
     "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "mongoose": "^8.14.1",
+    "node-cron": "^4.0.5",
     "telegraf": "^4.16.3"
   },
   "devDependencies": {
