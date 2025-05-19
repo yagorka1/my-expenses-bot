@@ -3,6 +3,7 @@ import { Telegraf } from 'telegraf';
 import dotenv from 'dotenv';
 import express, { Express, Request, Response } from 'express';
 import { createAccessControlMiddleware } from './scripts/accessControl';
+import { setupDailyScheduler } from './scripts/scheduleMessages';
 
 dotenv.config();
 const app: Express = express();
@@ -28,6 +29,7 @@ bot.use(createAccessControlMiddleware());
         console.log('✅ MongoDB connected');
 
         require('./scripts/botLogic').createBotLogic(bot);
+        require('./scripts/scheduleMessages').setupDailyScheduler(bot);
 
         if (isLocal) {
             await bot.launch();
