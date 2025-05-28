@@ -19,4 +19,5 @@ export interface ExpenseInterface {
   description?: string;
   categories?: [];
   subcategories?: [];
+  amounts?: {};
 }

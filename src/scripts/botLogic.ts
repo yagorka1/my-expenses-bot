@@ -67,7 +67,8 @@ export function createBotLogic(bot: Telegraf) {
       sheet.columns = [
         { header: 'Сумма', key: 'amount' },
         { header: 'Валюта', key: 'currency' },
-        { header: 'Категория', key: 'category' },
+        { header: 'Категория', key: 'categoryName' },
+        { header: 'Подкатегория', key: 'subcategoryName' },
         { header: 'Кто', key: 'person' },
         { header: 'Дата', key: 'date' },
       ];
@@ -77,6 +78,7 @@ export function createBotLogic(bot: Telegraf) {
           amount: e.amount,
           currency: e.currency,
           categoryName: e.categoryName,
+          subcategoryName: e.subcategoryName,
           person: e.person,
           date: e.date.toISOString().split('T')[0],
         })
