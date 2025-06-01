@@ -22,16 +22,26 @@ export async function sendWeeklyMonthlyReport(bot: Telegraf, type: string) {
       result += `    Траты(${person}): ${EUR.toFixed(2)} EUR | ${RSD.toFixed(2)} RSD | ${(EUR / data.totalAmountInEUR * 100).toFixed(2)}%\n`;
     }
 
+    const difference = data.totalAmountInEUR - data.prevTotalAmountInEUR;
+    const percentageChange = ((difference) / data.prevTotalAmountInEUR) * 100;
+    const changeDirection = percentageChange > 0 ? '⬆️ Рост' : percentageChange < 0 ? '⬇️ Снижение' : 'Без изменений';
+
     const message: string = `
 Статистика за ${type === 'week' ? 'неделю' : 'месяц'}:
 
   Траты: ${data.totalAmountInEUR.toFixed(2)} EUR | ${data.totalAmountInRSD.toFixed(2)} RSD | ${(data.totalAmountInEUR / data.totalAmountInEUR * 100).toFixed(2)}%
+  По сравнению с прошлой ${type === 'week' ? 'неделей' : 'месяцем'}: ${changeDirection} ${Math.abs(percentageChange).toFixed(2)}%
+-------------------------
 
 ${result}
+-------------------------
+
 ${data.sortedExpensesByCategory.map((item) =>
       `  Категория: ${item.category}
     Траты: ${item.amounts.EUR.toFixed(2)} EUR | ${item.amounts.RSD.toFixed(2)} RSD | ${(item.amounts.EUR / data.totalAmountInEUR * 100).toFixed(2)}%
 `).join('\n')}
+-------------------------
+
 ${data.sortedExpensesBySubcategory.map((item) =>
       `  Подкатегория: ${item.subcategory}
     Траты: ${item.amounts.EUR.toFixed(2)} EUR | ${item.amounts.RSD.toFixed(2)} RSD | ${(item.amounts.EUR / data.totalAmountInEUR * 100).toFixed(2)}%
