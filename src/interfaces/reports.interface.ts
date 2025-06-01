@@ -1,6 +1,8 @@
 export interface ReportsInterface {
   totalAmountInEUR: number;
   totalAmountInRSD: number;
+  prevTotalAmountInEUR: number;
+  prevTotalAmountInRSD: number;
   sortedExpensesByCategory: Array<{
     category: string;
     amounts: {
