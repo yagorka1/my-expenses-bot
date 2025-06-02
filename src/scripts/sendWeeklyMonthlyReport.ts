@@ -48,9 +48,11 @@ ${data.sortedExpensesBySubcategory.map((item) =>
 `).join('\n')}
 `;
 
-    const chatId  = (process.env.ALLOWED_USERS || '')
+    const chatIds: Array<string> = (process.env.ALLOWED_USERS || '').split(',').map(id => id.trim());
 
-    await bot.telegram.sendMessage(chatId, message);
+    for (const chatId of chatIds) {
+      await bot.telegram.sendMessage(chatId, message);
+    }
     console.log('Message sent');
   } catch (err) {
     console.error('Error sending message:', err);
