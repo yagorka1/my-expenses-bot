@@ -4,9 +4,9 @@
   "description": "",
   "main": "src/bot.ts",
   "scripts": {
-    "start": "node dist/bot.ts",
     "dev": "nodemon",
-    "build": "tsc"
+    "build": "tsc",
+    "start": "node dist/bot.js"
   },
   "keywords": [],
   "author": "",
