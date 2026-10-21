@@ -1,3 +1,8 @@
+export interface ReportAmounts {
+  EUR: number;
+  RSD: number;
+}
+
 export interface ReportsInterface {
   totalAmountInEUR: number;
   totalAmountInRSD: number;
@@ -5,23 +10,11 @@ export interface ReportsInterface {
   prevTotalAmountInRSD: number;
   sortedExpensesByCategory: Array<{
     category: string;
-    amounts: {
-      EUR: number;
-      RSD: number;
-    };
+    amounts: ReportAmounts;
   }>;
   sortedExpensesBySubcategory: Array<{
     subcategory: string;
-    amounts: {
-      EUR: number;
-      RSD: number;
-    };
+    amounts: ReportAmounts;
   }>;
-  expensesByPerson: {
-    person: string;
-    amounts: {
-      EUR: number;
-      RSD: number;
-    };
-  };
+  expensesByPerson: Record<string, ReportAmounts>;
 }

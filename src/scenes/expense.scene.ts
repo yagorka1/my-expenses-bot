@@ -1,11 +1,11 @@
-import axios from 'axios';
 import { Markup, Scenes } from 'telegraf';
 import { Currencies } from '../constants/currencies';
 import { Persons } from '../constants/persons';
 import { Actions } from '../enum/actions';
 import { BotContext } from '../interfaces/context.interface';
-import Category from '../models/Category';
-import Subcategory from '../models/Subcategory';
+import { CategoryItem, SubcategoryItem } from '../interfaces/firestore.interface';
+import { getCategories, getSubcategories } from '../services/categories.service';
+import { createExpense } from '../services/expenses.service';
 import { formatDate } from '../utils/date.utils';
 
 export const EXPENSE_SCENE_ID = 'EXPENSE_WIZARD';
@@ -51,11 +51,13 @@ export const expenseWizard = new Scenes.WizardScene<BotContext>(
     ctx.session.expense.currency = currency;
 
     try {
-        const categories = await Category.find().exec();
+        const categories = await getCategories();
         if (categories.length === 0) {
             await ctx.reply('Нет доступных категорий.');
             return ctx.scene.leave();
         }
+        (ctx.wizard.state as any).categories = categories;
+
         await ctx.reply('Выбери категорию:', Markup.keyboard(categories.map(c => [c.name])).oneTime().resize());
         return ctx.wizard.next();
     } catch (e) {
@@ -69,20 +71,21 @@ export const expenseWizard = new Scenes.WizardScene<BotContext>(
     const categoryName = getText(ctx);
     if (!categoryName) return;
 
-    const category = await Category.findOne({ name: categoryName });
-    
+    const categories: CategoryItem[] = (ctx.wizard.state as any).categories || [];
+    const category = categories.find((c) => c.name === categoryName);
+
     if (!category) {
         await ctx.reply('Категория не найдена. Попробуйте еще раз.');
         return;
     }
     ctx.session.expense.categoryName = categoryName;
     ctx.session.expense.category = {
-        _id: category._id.toString(),
+        _id: category.id,
         name: category.name
     };
 
     try {
-        const subcategories = await Subcategory.find({ categoryId: category._id }).exec();
+        const subcategories = await getSubcategories(category.id);
         if (subcategories.length === 0) {
             await ctx.reply('Нет доступных подкатегорий.');
              return ctx.scene.leave();
@@ -103,8 +106,8 @@ export const expenseWizard = new Scenes.WizardScene<BotContext>(
     const subcategoryName = getText(ctx);
     if (!subcategoryName) return;
 
-    const subcategories = (ctx.wizard.state as any).subcategories || [];
-    const subcategory = subcategories.find((s: any) => s.name === subcategoryName);
+    const subcategories: SubcategoryItem[] = (ctx.wizard.state as any).subcategories || [];
+    const subcategory = subcategories.find((s) => s.name === subcategoryName);
 
     if (!subcategory) {
         await ctx.reply('Подкатегория не найдена.');
@@ -112,7 +115,7 @@ export const expenseWizard = new Scenes.WizardScene<BotContext>(
     }
     ctx.session.expense.subcategoryName = subcategoryName;
     ctx.session.expense.subcategory = {
-        _id: subcategory._id.toString(),
+        _id: subcategory.id,
         name: subcategory.name
     };
 
@@ -217,21 +220,19 @@ export const expenseWizard = new Scenes.WizardScene<BotContext>(
 
     if (action === Actions.Confirm) {
         const e = ctx.session.expense;
-        const apiUrl = process.env.IS_LOCAL === 'true' ? 'http://localhost:3000' : process.env.API_URL;
-        
+
         try {
-            await axios.post(`${apiUrl}/expenses/create`, {
+            await createExpense({
                 amount: e.amount,
                 currency: e.currency,
                 categoryName: e.categoryName,
-                categoryId: e.category?._id || null,
+                categoryId: e.category._id,
                 subcategoryName: e.subcategoryName,
-                subcategoryId: e.subcategory?._id || null,
+                subcategoryId: e.subcategory._id,
                 person: e.person,
-                date: e.date,
-                description: e.description
-            }, {
-                headers: { Authorization: `Bearer ${process.env.BOT_TOKEN}` }
+                // Restored from the session store the date may come back as a string.
+                date: new Date(e.date),
+                description: e.description || ''
             });
             await ctx.reply('✅ Трата успешно сохранена!!!', Markup.removeKeyboard());
         } catch (err) {

@@ -1,12 +1,12 @@
 import dotenv from 'dotenv';
 import ExcelJS from 'exceljs';
 import express, { Express, Request, Response } from 'express';
-import mongoose from 'mongoose';
 import { Markup, Scenes, session, Telegraf } from 'telegraf';
+import { getDb } from './config/firebase';
 import { BotContext } from './interfaces/context.interface';
-import Expense from './models/Expense';
 import { EXPENSE_SCENE_ID, expenseWizard } from './scenes/expense.scene';
 import { createAccessControlMiddleware } from './scripts/accessControl';
+import { getExpensesInRange } from './services/expenses.service';
 
 dotenv.config();
 const app: Express = express();
@@ -45,7 +45,7 @@ bot.hears('📊 Скачать отчет', async (ctx) => {
     try {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const expenses = await Expense.find({ date: { $gte: startOfMonth } });
+      const expenses = await getExpensesInRange(startOfMonth);
 
       if (!expenses.length) return ctx.reply('За этот месяц трат не найдено.');
 
@@ -68,7 +68,7 @@ bot.hears('📊 Скачать отчет', async (ctx) => {
           categoryName: e.categoryName,
           subcategoryName: e.subcategoryName,
           person: e.person,
-          date: e.date.toISOString().split('T')[0],
+          date: e.date.toDate().toISOString().split('T')[0],
         })
       );
 
@@ -83,12 +83,9 @@ bot.hears('📊 Скачать отчет', async (ctx) => {
 
 (async () => {
   try {
-    if (!process.env.MONGODB_URI) {
-      throw new Error('MONGODB_URI is not defined in environment variables');
-    }
-
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('✅ MongoDB connected');
+    // Fails fast on missing/invalid credentials instead of on the first user action.
+    await getDb().listCollections();
+    console.log('✅ Firestore connected');
 
     require('./scripts/scheduleMessages').setupDailyScheduler(bot);
 
