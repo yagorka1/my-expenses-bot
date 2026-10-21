@@ -1,9 +1,12 @@
 /**
- * One-off copy of categories, subcategories and expenses from MongoDB to Firestore.
- * Mongo `_id`s become Firestore document ids, so references stay valid and re-running is safe
- * (documents are overwritten, not duplicated).
+ * Copies categories, subcategories and expenses from MongoDB to Firestore.
+ * Mongo `_id`s become Firestore document ids, so references stay valid.
  *
- *   npm run migrate              — copy everything
+ * Categories and subcategories are overwritten on every run: that's how categories added in the admin
+ * reach the app. Expenses are copied only while Firestore has none: copying them again would undo
+ * edits made in the app and bring back expenses deleted there.
+ *
+ *   npm run migrate              — copy (expenses only into an empty collection)
  *   npm run migrate -- --dry-run — only count and validate
  *
  * Env: MONGODB_URI, FIREBASE_SERVICE_ACCOUNT (or GOOGLE_APPLICATION_CREDENTIALS), optional DNS_SERVERS.
@@ -63,6 +66,11 @@ const mapExpense: Mapper<ExpenseDocument> = (doc) => {
   };
 };
 
+async function isEmpty(target: string): Promise<boolean> {
+  const snapshot = await getDb().collection(target).limit(1).get();
+  return snapshot.empty;
+}
+
 async function copyCollection<T extends object>(name: string, target: string, map: Mapper<T>): Promise<void> {
   const source = mongoose.connection.db!.collection<MongoDoc>(name);
   const firestore = getDb();
@@ -111,7 +119,11 @@ async function main() {
   try {
     await copyCollection('categories', COLLECTIONS.categories, mapCategory);
     await copyCollection('subcategories', COLLECTIONS.subcategories, mapSubcategory);
-    await copyCollection('expenses', COLLECTIONS.expenses, mapExpense);
+    if (await isEmpty(COLLECTIONS.expenses)) {
+      await copyCollection('expenses', COLLECTIONS.expenses, mapExpense);
+    } else {
+      console.log('⏭️ expenses: Firestore already has expenses, skipped (copying again would undo edits made in the app)');
+    }
   } finally {
     await mongoose.disconnect();
   }
