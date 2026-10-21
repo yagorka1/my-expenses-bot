@@ -1,36 +1,33 @@
-import axios from 'axios';
-import { ReportsInterface } from '../interfaces/reports.interface';
 import { Telegraf } from 'telegraf';
+import { getStatistics, StatisticsType } from '../services/statistics.service';
 
-export async function sendWeeklyMonthlyReport(bot: Telegraf, type: string) {
+/** Share of `part` in `total` as "12.34%"; "0.00%" when the total is zero. */
+const percent = (part: number, total: number) => `${(total > 0 ? (part / total) * 100 : 0).toFixed(2)}%`;
+
+export async function sendWeeklyMonthlyReport(bot: Telegraf, type: StatisticsType) {
   try {
-    const apiUrl: string | undefined = process.env.IS_LOCAL ? 'http://localhost:3000' : process.env.API_URL;
-    if (!apiUrl) throw new Error('API URL is not defined');
-
-    const response = await axios.get(`${apiUrl}/expenses/statistics?type=${type}`, {
-      headers: {
-        Authorization: `Bearer ${process.env.BOT_TOKEN}`,
-      },
-    });
-
-    const data: ReportsInterface = response.data.data as ReportsInterface;
+    const data = await getStatistics(type);
 
     let result: string = '';
     for (const person in data.expensesByPerson) {
-      // @ts-ignore
       const { EUR, RSD } = data.expensesByPerson[person];
-      result += `    Траты(${person}): ${EUR.toFixed(2)} EUR | ${RSD.toFixed(2)} RSD | ${(EUR / data.totalAmountInEUR * 100).toFixed(2)}%\n`;
+      result += `    Траты(${person}): ${EUR.toFixed(2)} EUR | ${RSD.toFixed(2)} RSD | ${percent(EUR, data.totalAmountInEUR)}\n`;
     }
 
     const difference = data.totalAmountInEUR - data.prevTotalAmountInEUR;
-    const percentageChange = ((difference) / data.prevTotalAmountInEUR) * 100;
-    const changeDirection = percentageChange > 0 ? '⬆️ Рост' : percentageChange < 0 ? '⬇️ Снижение' : 'Без изменений';
+    const comparison = data.prevTotalAmountInEUR > 0
+      ? (() => {
+          const percentageChange = (difference / data.prevTotalAmountInEUR) * 100;
+          const changeDirection = percentageChange > 0 ? '⬆️ Рост' : percentageChange < 0 ? '⬇️ Снижение' : 'Без изменений';
+          return `${changeDirection} ${Math.abs(percentageChange).toFixed(2)}%`;
+        })()
+      : 'нет данных за прошлый период';
 
     const message: string = `
 Статистика за ${type === 'week' ? 'неделю' : 'месяц'}:
 
-  Траты: ${data.totalAmountInEUR.toFixed(2)} EUR | ${data.totalAmountInRSD.toFixed(2)} RSD | ${(data.totalAmountInEUR / data.totalAmountInEUR * 100).toFixed(2)}%
-  По сравнению с прошлой ${type === 'week' ? 'неделей' : 'месяцем'}: ${changeDirection} ${Math.abs(percentageChange).toFixed(2)}%
+  Траты: ${data.totalAmountInEUR.toFixed(2)} EUR | ${data.totalAmountInRSD.toFixed(2)} RSD
+  По сравнению с прошлой ${type === 'week' ? 'неделей' : 'месяцем'}: ${comparison}
 -------------------------
 
 ${result}
@@ -38,17 +35,17 @@ ${result}
 
 ${data.sortedExpensesByCategory.map((item) =>
       `  Категория: ${item.category}
-    Траты: ${item.amounts.EUR.toFixed(2)} EUR | ${item.amounts.RSD.toFixed(2)} RSD | ${(item.amounts.EUR / data.totalAmountInEUR * 100).toFixed(2)}%
+    Траты: ${item.amounts.EUR.toFixed(2)} EUR | ${item.amounts.RSD.toFixed(2)} RSD | ${percent(item.amounts.EUR, data.totalAmountInEUR)}
 `).join('\n')}
 -------------------------
 
 ${data.sortedExpensesBySubcategory.map((item) =>
       `  Подкатегория: ${item.subcategory}
-    Траты: ${item.amounts.EUR.toFixed(2)} EUR | ${item.amounts.RSD.toFixed(2)} RSD | ${(item.amounts.EUR / data.totalAmountInEUR * 100).toFixed(2)}%
+    Траты: ${item.amounts.EUR.toFixed(2)} EUR | ${item.amounts.RSD.toFixed(2)} RSD | ${percent(item.amounts.EUR, data.totalAmountInEUR)}
 `).join('\n')}
 `;
 
-    const chatIds: Array<string> = (process.env.ALLOWED_USERS || '').split(',').map(id => id.trim());
+    const chatIds: Array<string> = (process.env.ALLOWED_USERS || '').split(',').map(id => id.trim()).filter(Boolean);
 
     for (const chatId of chatIds) {
       await bot.telegram.sendMessage(chatId, message);
