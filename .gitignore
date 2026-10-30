@@ -1,6 +1,7 @@
 /node_modules
 /dist
 .env
+/backups
 src/constants/general-data.js
 
 # Firebase service account keys

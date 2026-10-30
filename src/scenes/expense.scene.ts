@@ -78,7 +78,6 @@ export const expenseWizard = new Scenes.WizardScene<BotContext>(
         await ctx.reply('Категория не найдена. Попробуйте еще раз.');
         return;
     }
-    ctx.session.expense.categoryName = categoryName;
     ctx.session.expense.category = {
         _id: category.id,
         name: category.name
@@ -113,7 +112,6 @@ export const expenseWizard = new Scenes.WizardScene<BotContext>(
         await ctx.reply('Подкатегория не найдена.');
         return;
     }
-    ctx.session.expense.subcategoryName = subcategoryName;
     ctx.session.expense.subcategory = {
         _id: subcategory.id,
         name: subcategory.name
@@ -200,8 +198,8 @@ export const expenseWizard = new Scenes.WizardScene<BotContext>(
     const message = `
 Подтвердите вашу трату:
 Сумма: ${e.amount} ${e.currency}
-Категория: ${e.categoryName}
-Подкатегория: ${e.subcategoryName}
+Категория: ${e.category.name}
+Подкатегория: ${e.subcategory.name}
 Кто: ${e.person}
 Дата: ${formatDate(e.date)}
 Описание: ${e.description || '-'}`;
@@ -225,9 +223,7 @@ export const expenseWizard = new Scenes.WizardScene<BotContext>(
             await createExpense({
                 amount: e.amount,
                 currency: e.currency,
-                categoryName: e.categoryName,
                 categoryId: e.category._id,
-                subcategoryName: e.subcategoryName,
                 subcategoryId: e.subcategory._id,
                 person: e.person,
                 // Restored from the session store the date may come back as a string.

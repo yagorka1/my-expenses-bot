@@ -20,14 +20,19 @@ export interface SubcategoryItem extends SubcategoryDocument {
   id: string;
 }
 
-/** Shape of a document in the `expenses` collection; shared with expenses-mobile. */
+/**
+ * Shape of a document in the `expenses` collection; shared with expenses-mobile.
+ * Category names are looked up by id (see `getCategoryNames`).
+ */
 export interface ExpenseDocument {
   amount: number;
   currency: string;
   categoryId: string;
-  categoryName: string;
   subcategoryId: string;
-  subcategoryName: string;
+  /** Legacy copy of the name: left only on old expenses whose ids couldn't be matched. */
+  categoryName?: string;
+  /** Legacy, like `categoryName`. */
+  subcategoryName?: string;
   person: string;
   description: string;
   date: Timestamp;
@@ -41,9 +46,7 @@ export interface NewExpense {
   amount: number;
   currency: string;
   categoryId: string;
-  categoryName: string;
   subcategoryId: string;
-  subcategoryName: string;
   person: string;
   description: string;
   date: Date;
