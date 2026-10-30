@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/bot.js",
     "migrate": "ts-node src/scripts/migrate-mongo-to-firestore.ts",
-    "add-member": "ts-node src/scripts/add-member.ts"
+    "add-member": "ts-node src/scripts/add-member.ts",
+    "normalize-categories": "ts-node src/scripts/normalize-expense-categories.ts"
   },
   "keywords": [],
   "author": "",

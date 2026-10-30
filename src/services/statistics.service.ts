@@ -1,5 +1,6 @@
 import { ExpenseDocument } from '../interfaces/firestore.interface';
 import { ReportAmounts, ReportsInterface } from '../interfaces/reports.interface';
+import { getCategoryNames } from './categories.service';
 import { getExpensesInRange } from './expenses.service';
 
 export type StatisticsType = 'week' | 'month';
@@ -49,6 +50,24 @@ function sumBy(expenses: ExpenseDocument[], getKey: (expense: ExpenseDocument) =
   }, {});
 }
 
+/**
+ * Sums by id and labels each group with its current name, so a renamed category stays one group.
+ * An old expense without a known id is grouped by its stored name instead.
+ */
+function sumByCategory(
+  expenses: ExpenseDocument[],
+  getId: (expense: ExpenseDocument) => string,
+  getName: (expense: ExpenseDocument) => string,
+) {
+  const names = new Map<string, string>();
+  const sums = sumBy(expenses, (expense) => {
+    const key = getId(expense) || `name:${getName(expense)}`;
+    names.set(key, getName(expense));
+    return key;
+  });
+  return sortedEntries(sums).map(([key, amounts]) => ({ name: names.get(key) ?? key, amounts }));
+}
+
 const total = (expenses: ExpenseDocument[]) =>
   expenses.reduce<ReportAmounts>((acc, expense) => {
     const { EUR, RSD } = amountsOf(expense);
@@ -60,9 +79,10 @@ const sortedEntries = (record: Record<string, ReportAmounts>) =>
 
 export async function getStatistics(type: StatisticsType): Promise<ReportsInterface> {
   const { current, previous } = getRanges(type);
-  const [expenses, prevExpenses] = await Promise.all([
+  const [expenses, prevExpenses, names] = await Promise.all([
     getExpensesInRange(current.from, current.to),
     getExpensesInRange(previous.from, previous.to),
+    getCategoryNames(),
   ]);
 
   const currentTotal = total(expenses);
@@ -73,10 +93,10 @@ export async function getStatistics(type: StatisticsType): Promise<ReportsInterf
     totalAmountInRSD: currentTotal.RSD,
     prevTotalAmountInEUR: previousTotal.EUR,
     prevTotalAmountInRSD: previousTotal.RSD,
-    sortedExpensesByCategory: sortedEntries(sumBy(expenses, (e) => e.categoryName))
-      .map(([category, amounts]) => ({ category, amounts })),
-    sortedExpensesBySubcategory: sortedEntries(sumBy(expenses, (e) => e.subcategoryName))
-      .map(([subcategory, amounts]) => ({ subcategory, amounts })),
+    sortedExpensesByCategory: sumByCategory(expenses, (e) => e.categoryId, names.category)
+      .map(({ name, amounts }) => ({ category: name, amounts })),
+    sortedExpensesBySubcategory: sumByCategory(expenses, (e) => e.subcategoryId, names.subcategory)
+      .map(({ name, amounts }) => ({ subcategory: name, amounts })),
     expensesByPerson: sumBy(expenses, (e) => e.person),
   };
 }

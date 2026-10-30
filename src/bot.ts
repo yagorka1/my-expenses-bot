@@ -6,6 +6,7 @@ import { getDb } from './config/firebase';
 import { BotContext } from './interfaces/context.interface';
 import { EXPENSE_SCENE_ID, expenseWizard } from './scenes/expense.scene';
 import { createAccessControlMiddleware } from './scripts/accessControl';
+import { getCategoryNames } from './services/categories.service';
 import { getExpensesInRange } from './services/expenses.service';
 
 dotenv.config();
@@ -45,7 +46,7 @@ bot.hears('📊 Скачать отчет', async (ctx) => {
     try {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const expenses = await getExpensesInRange(startOfMonth);
+      const [expenses, names] = await Promise.all([getExpensesInRange(startOfMonth), getCategoryNames()]);
 
       if (!expenses.length) return ctx.reply('За этот месяц трат не найдено.');
 
@@ -65,8 +66,8 @@ bot.hears('📊 Скачать отчет', async (ctx) => {
         sheet.addRow({
           amount: e.amount,
           currency: e.currency,
-          categoryName: e.categoryName,
-          subcategoryName: e.subcategoryName,
+          categoryName: names.category(e),
+          subcategoryName: names.subcategory(e),
           person: e.person,
           date: e.date.toDate().toISOString().split('T')[0],
         })

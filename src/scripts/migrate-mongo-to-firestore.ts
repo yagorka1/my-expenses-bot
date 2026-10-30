@@ -2,9 +2,12 @@
  * Copies categories, subcategories and expenses from MongoDB to Firestore.
  * Mongo `_id`s become Firestore document ids, so references stay valid.
  *
- * Categories and subcategories are overwritten on every run: that's how categories added in the admin
- * reach the app. Expenses are copied only while Firestore has none: copying them again would undo
- * edits made in the app and bring back expenses deleted there.
+ * Categories and subcategories are overwritten on every run. Expenses are copied only while Firestore
+ * has none: copying them again would undo edits made in the app and bring back expenses deleted there.
+ *
+ * Kept for reference, don't run it any more: categories are managed in the app now, and overwriting
+ * them would bring back the old names. Copied expenses still carry category names; see
+ * normalize-expense-categories.ts.
  *
  *   npm run migrate              — copy (expenses only into an empty collection)
  *   npm run migrate -- --dry-run — only count and validate

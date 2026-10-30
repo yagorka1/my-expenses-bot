@@ -4,12 +4,10 @@ export interface ExpenseInterface {
   step: Steps;
   amount?: number;
   currency?: string;
-  categoryName?: string;
   category?: {
     _id: string;
     name: string;
   },
-  subcategoryName?: string;
   subcategory?: {
     _id: string;
     name: string;
