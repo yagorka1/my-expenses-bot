@@ -9,7 +9,8 @@
     "start": "node dist/bot.js",
     "migrate": "ts-node src/scripts/migrate-mongo-to-firestore.ts",
     "add-member": "ts-node src/scripts/add-member.ts",
-    "normalize-categories": "ts-node src/scripts/normalize-expense-categories.ts"
+    "normalize-categories": "ts-node src/scripts/normalize-expense-categories.ts",
+    "remap-categories": "ts-node src/scripts/remap-categories.ts"
   },
   "keywords": [],
   "author": "",
