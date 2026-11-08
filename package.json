@@ -10,7 +10,8 @@
     "migrate": "ts-node src/scripts/migrate-mongo-to-firestore.ts",
     "add-member": "ts-node src/scripts/add-member.ts",
     "normalize-categories": "ts-node src/scripts/normalize-expense-categories.ts",
-    "remap-categories": "ts-node src/scripts/remap-categories.ts"
+    "remap-categories": "ts-node src/scripts/remap-categories.ts",
+    "split-beauty-category": "ts-node src/scripts/split-beauty-category.ts"
   },
   "keywords": [],
   "author": "",
